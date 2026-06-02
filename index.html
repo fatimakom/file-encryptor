@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>File Encryptor — AES-256</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d1f1a;       /* deep forest green — professional, secure feeling */
+      --bg2:     #132820;       /* slightly lighter for cards */
+      --surface: rgba(255,255,255,0.04);
+      --border:  rgba(255,255,255,0.09);
+      --green:   #00d084;
+      --blue:    #00cfff;
+      --red:     #ff4d6d;
+      --gold:    #ffaa00;
+      --white:   #f0f4ff;
+      --mist:    #7a9990;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem 6rem;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Floating background stickers ── */
+    .bg-sticker {
+      position: fixed;
+      pointer-events: none;
+      user-select: none;
+      opacity: 0.06;
+      font-size: 6rem;
+      z-index: 0;
+      animation: floatBg ease-in-out infinite;
+    }
+    .bg-sticker:nth-child(1) { top:  5%; left:  2%; font-size: 5rem;  animation-duration: 20s; animation-delay: 0s; }
+    .bg-sticker:nth-child(2) { top: 10%; right: 4%; font-size: 7rem;  animation-duration: 25s; animation-delay: 2s; }
+    .bg-sticker:nth-child(3) { top: 45%; left:  1%; font-size: 4rem;  animation-duration: 18s; animation-delay: 4s; }
+    .bg-sticker:nth-child(4) { top: 55%; right: 2%; font-size: 6rem;  animation-duration: 22s; animation-delay: 1s; }
+    .bg-sticker:nth-child(5) { top: 78%; left:  5%; font-size: 5rem;  animation-duration: 16s; animation-delay: 3s; }
+    .bg-sticker:nth-child(6) { top: 85%; right: 6%; font-size: 4.5rem;animation-duration: 24s; animation-delay: 5s; }
+    @keyframes floatBg {
+      0%,100% { transform: translateY(0px)   rotate(0deg);  }
+      33%      { transform: translateY(-18px) rotate(4deg);  }
+      66%      { transform: translateY(-8px)  rotate(-3deg); }
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 10% 10%, rgba(0,208,132,0.09) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 90% 90%, rgba(0,207,255,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* keep all content above background elements */
+    header, .tabs, .card, .badge-row, .footer-strip { position: relative; z-index: 1; }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      animation: fadeDown 0.6s ease both;
+    }
+    .shield {
+      font-size: 3.5rem;
+      display: block;
+      margin-bottom: 0.5rem;
+      animation: shieldPulse 3s ease-in-out infinite;
+    }
+    @keyframes shieldPulse {
+      0%,100% { filter: drop-shadow(0 0 8px rgba(0,207,255,0.4)); transform: scale(1); }
+      50%      { filter: drop-shadow(0 0 24px rgba(0,207,255,0.7)); transform: scale(1.06); }
+    }
+    header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--white) 30%, var(--blue));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin-top: 0.4rem; color: var(--mist); font-size: 0.9rem; }
+
+    @keyframes fadeDown {
+      from { opacity:0; transform:translateY(-20px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ── Tab switcher ── */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      background: rgba(19,40,32,0.8);
+      border: 1px solid rgba(0,208,132,0.12);
+      border-radius: 14px;
+      padding: 0.4rem;
+      animation: fadeDown 0.6s 0.1s ease both;
+    }
+    .tab {
+      flex: 1;
+      padding: 0.7rem 1.5rem;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      color: var(--mist);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      background: rgba(255,255,255,0.08);
+      color: var(--white);
+    }
+    .tab:hover:not(.active) { color: var(--white); }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: rgba(19,40,32,0.85);
+      border: 1px solid rgba(0,208,132,0.12);
+      border-radius: 24px;
+      padding: 2rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      animation: fadeDown 0.6s 0.15s ease both;
+    }
+
+    /* ── Badge row ── */
+    .badge-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      animation: fadeDown 0.6s 0.1s ease both;
+    }
+    .badge {
+      background: rgba(0,208,132,0.1);
+      border: 1px solid rgba(0,208,132,0.25);
+      border-radius: 99px;
+      padding: 0.3rem 0.9rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #80e8c0;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* ── Footer sticker strip ── */
+    .footer-strip {
+      margin-top: 2rem;
+      display: flex;
+      gap: 1rem;
+      font-size: 1.6rem;
+      opacity: 0.45;
+      animation: fadeDown 0.6s 0.3s ease both;
+    }
+    .footer-strip span {
+      cursor: default;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .footer-strip span:hover { opacity: 1; transform: scale(1.3) rotate(-5deg); }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.3s, background 0.3s;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--blue);
+      background: rgba(0,207,255,0.04);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-icon { font-size: 2.5rem; margin-bottom: 0.5rem; display: block; }
+    .drop-text { color: var(--mist); font-size: 0.9rem; }
+    .drop-text span { color: var(--blue); font-weight: 500; }
+
+    /* File selected state */
+    .file-selected {
+      background: rgba(0,207,255,0.05);
+      border-color: rgba(0,207,255,0.3);
+    }
+    .file-info {
+      display: none;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.8rem 1rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+    .file-info.visible { display: flex; }
+    .file-icon { font-size: 1.8rem; flex-shrink: 0; }
+    .file-details { flex: 1; min-width: 0; }
+    .file-name {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-size { font-size: 0.75rem; color: var(--mist); margin-top: 0.2rem; }
+    .file-remove {
+      background: none; border: none;
+      color: var(--mist); cursor: pointer;
+      font-size: 1.2rem; padding: 0.2rem;
+      transition: color 0.2s; flex-shrink: 0;
+    }
+    .file-remove:hover { color: var(--red); }
+
+    /* ── Password input ── */
+    .field-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--mist);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+    .input-wrap {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    .input-wrap input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 3rem 0.9rem 1.1rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.95rem;
+      color: var(--white);
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .input-wrap input:focus { border-color: var(--blue); }
+    .input-wrap input::placeholder { color: var(--mist); font-family: 'DM Sans', sans-serif; }
+    .eye-btn {
+      position: absolute; right: 0.9rem; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      color: var(--mist); cursor: pointer; font-size: 1.1rem;
+      transition: color 0.2s;
+    }
+    .eye-btn:hover { color: var(--white); }
+
+    /* Password strength mini bar */
+    .pwd-strength {
+      height: 3px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.06);
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    .pwd-strength-fill {
+      height: 100%;
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.4s, background 0.4s;
+    }
+
+    /* ── Action button ── */
+    .btn-action {
+      width: 100%;
+      padding: 1rem;
+      border-radius: 14px;
+      border: none;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      margin-bottom: 1rem;
+    }
+    .btn-action:hover  { opacity: 0.88; transform: translateY(-1px); }
+    .btn-action:active { transform: translateY(0); }
+    .btn-encrypt { background: linear-gradient(135deg, #00cfff, #0090cc); color: #080c14; }
+    .btn-decrypt { background: linear-gradient(135deg, #00d084, #009960); color: #080c14; }
+    .btn-action:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ── Progress ── */
+    #progressBox {
+      display: none;
+      margin-bottom: 1rem;
+    }
+    #progressBox.visible { display: block; }
+    .progress-track {
+      height: 8px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      width: 0%;
+      transition: width 0.3s;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0%   { filter: brightness(1); }
+      50%  { filter: brightness(1.3); }
+      100% { filter: brightness(1); }
+    }
+    .progress-text { font-size: 0.8rem; color: var(--mist); text-align: center; }
+
+    /* ── Result box ── */
+    #resultBox { display: none; }
+    #resultBox.visible { display: block; }
+    .result-success {
+      background: rgba(0,208,132,0.08);
+      border: 1px solid rgba(0,208,132,0.25);
+      border-radius: 14px;
+      padding: 1.2rem;
+    }
+    .result-error {
+      background: rgba(255,77,109,0.08);
+      border: 1px solid rgba(255,77,109,0.25);
+      border-radius: 14px;
+      padding: 1.2rem;
+    }
+    .result-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .result-detail { font-size: 0.85rem; color: #c8d8e8; line-height: 1.6; }
+    .result-detail span { font-family: 'DM Mono', monospace; color: var(--white); }
+
+    /* ── Info section ── */
+    .info-section {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .info-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--mist);
+      margin-bottom: 0.8rem;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+    .info-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.8rem;
+      font-size: 0.8rem;
+    }
+    .info-item .i-icon { font-size: 1.1rem; margin-bottom: 0.3rem; display: block; }
+    .info-item .i-label { color: var(--mist); font-size: 0.7rem; margin-bottom: 0.2rem; }
+    .info-item .i-value { font-weight: 500; }
+
+    /* ── Warning ── */
+    .warning-box {
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      background: rgba(255,170,0,0.07);
+      border: 1px solid rgba(255,170,0,0.2);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.82rem;
+      color: #d0b880;
+      line-height: 1.5;
+    }
+    .warning-box .w-icon { font-size: 1.1rem; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+  <!-- Floating background stickers -->
+  <span class="bg-sticker">🛡️</span>
+  <span class="bg-sticker">🔐</span>
+  <span class="bg-sticker">🔑</span>
+  <span class="bg-sticker">🔒</span>
+  <span class="bg-sticker">⚙️</span>
+  <span class="bg-sticker">🧬</span>
+
+<header>
+  <div style="display:flex;justify-content:center;gap:0.6rem;font-size:2rem;margin-bottom:0.8rem;">
+    <span style="display:inline-block;animation:shieldPulse 2s ease-in-out infinite 0s">🛡️</span>
+    <span style="display:inline-block;animation:shieldPulse 2s ease-in-out infinite 0.2s">🔐</span>
+    <span style="display:inline-block;animation:shieldPulse 2s ease-in-out infinite 0.4s">🔑</span>
+    <span style="display:inline-block;animation:shieldPulse 2s ease-in-out infinite 0.6s">⚙️</span>
+    <span style="display:inline-block;animation:shieldPulse 2s ease-in-out infinite 0.8s">🧬</span>
+  </div>
+  <span class="shield">🛡️</span>
+  <h1>File Encryptor</h1>
+  <p>AES-256 Military-Grade Encryption · 100% in your browser</p>
+</header>
+
+<!-- Badges -->
+<div class="badge-row">
+  <div class="badge">🔒 AES-256-GCM</div>
+  <div class="badge">🧂 PBKDF2 · 100k rounds</div>
+  <div class="badge">🌐 100% In Browser</div>
+  <div class="badge">🎲 Random Salt + IV</div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('encrypt')">🔒 Encrypt</button>
+  <button class="tab" onclick="switchTab('decrypt')">🔓 Decrypt</button>
+</div>
+
+<div class="card">
+
+  <!-- Drop zone -->
+  <div class="drop-zone" id="dropZone"
+       ondragover="onDragOver(event)"
+       ondragleave="onDragLeave(event)"
+       ondrop="onDrop(event)">
+    <input type="file" id="fileInput" onchange="onFileSelected(event)"/>
+    <span class="drop-icon" id="dropIcon">📂</span>
+    <div class="drop-text" id="dropText">
+      Drop any file here or <span>click to browse</span>
+    </div>
+  </div>
+
+  <!-- File info (shown after selection) -->
+  <div class="file-info" id="fileInfo">
+    <span class="file-icon" id="fileIcon">📄</span>
+    <div class="file-details">
+      <div class="file-name" id="fileName">—</div>
+      <div class="file-size" id="fileSize">—</div>
+    </div>
+    <button class="file-remove" onclick="removeFile()" title="Remove file">✕</button>
+  </div>
+
+  <!-- Password -->
+  <label class="field-label">Password</label>
+  <div class="input-wrap">
+    <input type="password" id="pwdInput"
+           placeholder="Enter a strong password…"
+           oninput="onPasswordInput()"/>
+    <button class="eye-btn" onclick="toggleEye('pwdInput', this)">👁️</button>
+  </div>
+  <div class="pwd-strength">
+    <div class="pwd-strength-fill" id="pwdBar"></div>
+  </div>
+
+  <!-- Confirm password (encrypt only) -->
+  <div id="confirmWrap">
+    <label class="field-label">Confirm Password</label>
+    <div class="input-wrap">
+      <input type="password" id="confirmInput"
+             placeholder="Repeat your password…"/>
+      <button class="eye-btn" onclick="toggleEye('confirmInput', this)">👁️</button>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div id="progressBox">
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-text" id="progressText">Processing…</div>
+  </div>
+
+  <!-- Result -->
+  <div id="resultBox"></div>
+
+  <!-- Action button -->
+  <button class="btn-action btn-encrypt" id="actionBtn" onclick="handleAction()">
+    🔒 Encrypt File
+  </button>
+
+  <!-- Info section -->
+  <div class="info-section">
+    <div class="info-title">How it works</div>
+    <div class="info-grid">
+      <div class="info-item">
+        <span class="i-icon">🔑</span>
+        <div class="i-label">Encryption</div>
+        <div class="i-value">AES-256-CBC</div>
+      </div>
+      <div class="info-item">
+        <span class="i-icon">🧂</span>
+        <div class="i-label">Key Derivation</div>
+        <div class="i-value">PBKDF2 · 100k rounds</div>
+      </div>
+      <div class="info-item">
+        <span class="i-icon">🎲</span>
+        <div class="i-label">Randomness</div>
+        <div class="i-value">Random Salt + IV</div>
+      </div>
+      <div class="info-item">
+        <span class="i-icon">🌐</span>
+        <div class="i-label">Privacy</div>
+        <div class="i-value">100% in browser</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Warning -->
+  <div class="warning-box">
+    <span class="w-icon">⚠️</span>
+    <span>If you forget your password, the file <strong>cannot be recovered</strong>. There is no reset option — store your password safely.</span>
+  </div>
+
+</div>
+
+<!-- Footer sticker strip -->
+<div class="footer-strip">
+  <span title="Secure">🛡️</span>
+  <span title="Encrypted">🔐</span>
+  <span title="Key">🔑</span>
+  <span title="Locked">🔒</span>
+  <span title="Settings">⚙️</span>
+  <span title="DNA">🧬</span>
+  <span title="Safe">✅</span>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let currentTab  = "encrypt";  // "encrypt" or "decrypt"
+  let selectedFile = null;       // the File object the user picked
+
+  // ── Tab switcher ───────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    currentTab = tab;
+
+    // Update tab button styles
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    event.target.classList.add("active");
+
+    // Show/hide confirm password (only needed when encrypting)
+    document.getElementById("confirmWrap").style.display = tab === "encrypt" ? "block" : "none";
+
+    // Update action button
+    const btn = document.getElementById("actionBtn");
+    if (tab === "encrypt") {
+      btn.textContent  = "🔒 Encrypt File";
+      btn.className    = "btn-action btn-encrypt";
+      document.getElementById("dropIcon").textContent = "📂";
+      document.getElementById("dropText").innerHTML   = 'Drop any file here or <span>click to browse</span>';
+    } else {
+      btn.textContent  = "🔓 Decrypt File";
+      btn.className    = "btn-action btn-decrypt";
+      document.getElementById("dropIcon").textContent = "🔐";
+      document.getElementById("dropText").innerHTML   = 'Drop an <span>.encrypted</span> file here';
+    }
+
+    // Reset state
+    removeFile();
+    clearResult();
+    document.getElementById("pwdInput").value     = "";
+    document.getElementById("confirmInput").value = "";
+    document.getElementById("pwdBar").style.width = "0%";
+  }
+
+  // ── File handling ──────────────────────────────────────────────────────────
+  function onFileSelected(e) {
+    const file = e.target.files[0];
+    if (file) setFile(file);
+  }
+
+  function onDragOver(e) {
+    e.preventDefault();
+    document.getElementById("dropZone").classList.add("dragover");
+  }
+
+  function onDragLeave(e) {
+    document.getElementById("dropZone").classList.remove("dragover");
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById("dropZone").classList.remove("dragover");
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  }
+
+  function setFile(file) {
+    selectedFile = file;
+
+    // Show file info bar
+    document.getElementById("fileInfo").classList.add("visible");
+    document.getElementById("fileName").textContent = file.name;
+    document.getElementById("fileSize").textContent = formatSize(file.size);
+
+    // Pick a nice icon based on file type
+    document.getElementById("fileIcon").textContent = getFileIcon(file.name);
+
+    // Hide the drop zone
+    document.getElementById("dropZone").style.display = "none";
+    clearResult();
+  }
+
+  function removeFile() {
+    selectedFile = null;
+    document.getElementById("fileInfo").classList.remove("visible");
+    document.getElementById("dropZone").style.display  = "block";
+    document.getElementById("fileInput").value = "";
+    clearResult();
+  }
+
+  function getFileIcon(name) {
+    const ext = name.split(".").pop().toLowerCase();
+    const icons = {
+      pdf: "📄", jpg: "🖼️", jpeg: "🖼️", png: "🖼️", gif: "🖼️",
+      mp4: "🎬", mp3: "🎵", zip: "📦", rar: "📦",
+      doc: "📝", docx: "📝", xls: "📊", xlsx: "📊",
+      txt: "📃", py: "🐍", js: "📜", html: "🌐",
+      encrypted: "🔐"
+    };
+    return icons[ext] || "📄";
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024)        return bytes + " bytes";
+    if (bytes < 1024**2)     return (bytes/1024).toFixed(1) + " KB";
+    if (bytes < 1024**3)     return (bytes/1024**2).toFixed(1) + " MB";
+    return (bytes/1024**3).toFixed(1) + " GB";
+  }
+
+  // ── Password strength mini bar ─────────────────────────────────────────────
+  function onPasswordInput() {
+    const pwd = document.getElementById("pwdInput").value;
+    let score = 0;
+    if (pwd.length >= 8)              score += 25;
+    if (pwd.length >= 12)             score += 15;
+    if (/[A-Z]/.test(pwd))           score += 15;
+    if (/[a-z]/.test(pwd))           score += 10;
+    if (/\d/.test(pwd))              score += 15;
+    if (/[^A-Za-z0-9]/.test(pwd))   score += 20;
+    score = Math.min(100, score);
+
+    const bar   = document.getElementById("pwdBar");
+    bar.style.width = score + "%";
+    bar.style.background =
+      score >= 75 ? "var(--green)" :
+      score >= 50 ? "var(--gold)"  :
+      score >= 25 ? "#ff8c00"      : "var(--red)";
+  }
+
+  function toggleEye(inputId, btn) {
+    const input = document.getElementById(inputId);
+    input.type  = input.type === "password" ? "text" : "password";
+    btn.textContent = input.type === "password" ? "👁️" : "🙈";
+  }
+
+  // ── Main action ────────────────────────────────────────────────────────────
+  async function handleAction() {
+    clearResult();
+
+    // Validate inputs
+    if (!selectedFile) return showResult("error", "❌ No file selected", "Please drop or select a file first.");
+
+    const pwd     = document.getElementById("pwdInput").value;
+    const confirm = document.getElementById("confirmInput").value;
+
+    if (!pwd) return showResult("error", "❌ No password", "Please enter a password.");
+
+    if (currentTab === "encrypt" && pwd !== confirm)
+      return showResult("error", "❌ Passwords don't match", "Please make sure both passwords are identical.");
+
+    // Show progress
+    showProgress(true, "Reading file…", 20);
+
+    // Read file as ArrayBuffer (raw bytes)
+    const fileData = await readFileAsArrayBuffer(selectedFile);
+    showProgress(true, currentTab === "encrypt" ? "Encrypting…" : "Decrypting…", 50);
+
+    try {
+      let resultData, outputName;
+
+      if (currentTab === "encrypt") {
+        // ENCRYPT
+        const { encrypted, salt, iv } = await encryptData(fileData, pwd);
+
+        // Build output: [magic(4)][salt(32)][iv(12)][encrypted]
+        // We use a magic header "ENC1" so we can identify our files
+        const magic  = new TextEncoder().encode("ENC1");
+        const output = new Uint8Array(4 + 32 + 12 + encrypted.byteLength);
+        output.set(magic,                              0);
+        output.set(new Uint8Array(salt),               4);
+        output.set(new Uint8Array(iv),                36);
+        output.set(new Uint8Array(encrypted),          48);
+
+        resultData  = output;
+        outputName  = selectedFile.name + ".encrypted";
+
+      } else {
+        // DECRYPT
+        const data = new Uint8Array(fileData);
+
+        // Read magic header
+        const magic = new TextDecoder().decode(data.slice(0, 4));
+        if (magic !== "ENC1")
+          throw new Error("This file was not encrypted by this tool, or it is corrupted.");
+
+        const salt      = data.slice(4,  36);
+        const iv        = data.slice(36, 48);
+        const encrypted = data.slice(48);
+
+        const decrypted = await decryptData(encrypted.buffer, pwd, salt, iv);
+        resultData  = new Uint8Array(decrypted);
+        outputName  = selectedFile.name.replace(".encrypted", "");
+      }
+
+      showProgress(true, "Saving file…", 90);
+
+      // Download the result file
+      downloadFile(resultData, outputName);
+
+      showProgress(false);
+      showResult(
+        "success",
+        currentTab === "encrypt" ? "✅ File Encrypted!" : "✅ File Decrypted!",
+        `Output file: <span>${outputName}</span><br>Size: <span>${formatSize(resultData.byteLength)}</span><br><br>
+         ${currentTab === "encrypt"
+           ? "The file has been downloaded. Keep your password safe — without it, this file cannot be recovered."
+           : "The file has been decrypted and downloaded successfully."}`
+      );
+
+    } catch (err) {
+      showProgress(false);
+      showResult("error", "❌ Failed", err.message || "Wrong password or corrupted file.");
+    }
+  }
+
+  // ── Crypto functions (using Web Crypto API — built into all browsers) ──────
+
+  async function encryptData(data, password) {
+    // 1. Generate random salt (32 bytes) and IV (12 bytes for AES-GCM)
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    const iv   = crypto.getRandomValues(new Uint8Array(12));
+
+    // 2. Derive key from password using PBKDF2 (same as Python version)
+    const key = await deriveKey(password, salt);
+
+    // 3. Encrypt using AES-GCM
+    // AES-GCM is even better than CBC — it also verifies data integrity
+    // If the password is wrong, decryption throws an error (not garbage data)
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      data
+    );
+
+    return { encrypted, salt, iv };
+  }
+
+  async function decryptData(data, password, salt, iv) {
+    const key = await deriveKey(password, salt);
+
+    try {
+      const decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv },
+        key,
+        data
+      );
+      return decrypted;
+    } catch {
+      throw new Error("Wrong password or the file is corrupted.");
+    }
+  }
+
+  async function deriveKey(password, salt) {
+    // Import the password as a raw key
+    const rawKey = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(password),
+      "PBKDF2",
+      false,
+      ["deriveKey"]
+    );
+
+    // Derive a 256-bit AES key using PBKDF2 with 100,000 iterations
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+      rawKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = e => resolve(e.target.result);
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function downloadFile(data, filename) {
+    const blob = new Blob([data]);
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function showProgress(visible, text = "", percent = 0) {
+    const box  = document.getElementById("progressBox");
+    const fill = document.getElementById("progressFill");
+    const txt  = document.getElementById("progressText");
+    box.classList.toggle("visible", visible);
+    fill.style.width = percent + "%";
+    txt.textContent  = text;
+  }
+
+  function showResult(type, title, detail) {
+    const box = document.getElementById("resultBox");
+    box.className = "visible";
+    box.innerHTML = `
+      <div class="result-${type === "success" ? "success" : "error"}" style="margin-bottom:1rem">
+        <div class="result-title">${title}</div>
+        <div class="result-detail">${detail}</div>
+      </div>`;
+  }
+
+  function clearResult() {
+    const box = document.getElementById("resultBox");
+    box.className = "";
+    box.innerHTML = "";
+    showProgress(false);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+# Required library for AES-256 encryption
+cryptography>=41.0.0
