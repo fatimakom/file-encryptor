@@ -120,13 +120,17 @@ It is used by:
 - **Vanilla HTML/CSS/JS** — web interface
 
 ---
+---
+## 🔗 Demo link
+
+https://file-encryptionlb.netlify.app
 
 ## 🙋 Author
 
 Built by **Fatima Koumayha** — junior developer learning cybersecurity.
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [linkedin.com/in/yourprofile](https://linkedin.com/in/yourprofile)
+- GitHub: [@fatimakom](https://github.com/fatimakom/file-encryptor.git)
+- LinkedIn: [linkedin.com/in/fatima-koumayha-a09675323/](https://www.linkedin.com/in/fatima-koumayha-a09675323)
 
 ---
 
